@@ -3,12 +3,17 @@ import React, { useEffect, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import Button from "react-bootstrap/Button";
 import Card from "react-bootstrap/Card";
+import { useAuth0 } from "@auth0/auth0-react";
 
 import { BACKEND_URL } from "../constants.js";
 
 const Listing = () => {
   const [listingId, setListingId] = useState();
   const [listing, setListing] = useState({});
+
+  const { user, isAuthenticated, getAccessTokenSilently, loginWithRedirect } =
+    useAuth0();
+  const [accessToken, setAccessToken] = useState("");
 
   useEffect(() => {
     // If there is a listingId, retrieve the listing data
@@ -36,10 +41,37 @@ const Listing = () => {
     }
   }
 
-  const handleClick = () => {
-    axios.put(`${BACKEND_URL}/listings/${listingId}`).then((response) => {
-      setListing(response.data);
-    });
+  const checkUser = async () => {
+    if (isAuthenticated) {
+      let token = await getAccessTokenSilently();
+      setAccessToken(token);
+    } else {
+      loginWithRedirect();
+    }
+  };
+
+  const handleClick = async () => {
+    checkUser();
+
+    console.log(accessToken);
+
+    if (accessToken) {
+      axios
+        .put(
+          `${BACKEND_URL}/listings/${listingId}`,
+          {
+            user,
+          },
+          {
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+            },
+          }
+        )
+        .then((response) => {
+          setListing(response.data);
+        });
+    }
   };
 
   return (
